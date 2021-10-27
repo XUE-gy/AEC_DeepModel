@@ -21,8 +21,7 @@ data_preparation/Synthetic/VAL/nearend_speech/*.wav
 
 testDemo/checkpoints/*
 test/*
-testDemo/event_file/*
-testDemo/event_file/AEC_baseline/*
+
 checkpoints/*
 checkpoints/AEC_baseline/*
 
