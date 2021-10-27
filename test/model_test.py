@@ -38,10 +38,11 @@ def spectrogram(wav_path, win_length=320):
 
 
 fs = 16000
-farend_speech = "./farend_speech/farend_speech_fileid_9992.wav"
-nearend_mic_signal = "./nearend_mic_signal/nearend_mic_fileid_9992.wav"
-nearend_speech = "./nearend_speech/nearend_speech_fileid_9992.wav"
-echo_signal = "./echo_signal/echo_fileid_9992.wav"
+index = str(9994)
+farend_speech = "./farend_speech/farend_speech_fileid_" +index+".wav"
+nearend_mic_signal = "./nearend_mic_signal/nearend_mic_fileid_" +index+".wav"
+nearend_speech = "./nearend_speech/nearend_speech_fileid_" +index+".wav"
+echo_signal = "./echo_signal/echo_fileid_" +index+".wav"
 
 print("GPU是否可用：", torch.cuda.is_available())  # True
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -58,7 +59,7 @@ nearend_speech_magnitude = nearend_speech_magnitude.to(device)
 nearend_speech_phase = nearend_speech_phase.to(device)
 
 model = Base_model().to(device)  # 实例化模型
-checkpoint = torch.load("../checkpoints/AEC_baseline/30.pth")
+checkpoint = torch.load("../checkpoints/AEC_baseline/741.pth")
 model.load_state_dict(checkpoint["model"])
 
 X = torch.cat((farend_speech_magnitude, nearend_mic_magnitude), dim=0)
@@ -73,13 +74,13 @@ print("complex_stft", complex_stft.shape)  # [1, 161, 999]
 per_nearend = torch.istft(complex_stft, n_fft=320, hop_length=160, win_length=320,
                           window=torch.hann_window(window_length=320).to(device))
 
-torchaudio.save("./predict/nearend_speech_fileid_9992.wav", src=per_nearend.cpu().detach(), sample_rate=fs)
+torchaudio.save("./predict/nearend_speech_fileid_" +index+".wav", src=per_nearend.cpu().detach(), sample_rate=fs)
 # print("近端语音", per_nearend.shape)    # [1, 159680]
 
 # y, _ = librosa.load(nearend_mic_signal, sr=fs)
 y, _ = librosa.load(nearend_speech, sr=fs)
 time_y = np.arange(0, len(y)) * (1.0 / fs)
-recover_wav, _ = librosa.load("./predict/nearend_speech_fileid_9992.wav", sr=16000)
+recover_wav, _ = librosa.load("./predict/nearend_speech_fileid_" +index+".wav", sr=16000)
 time_recover = np.arange(0, len(recover_wav)) * (1.0 / fs)
 
 plt.figure(figsize=(8,6))

@@ -23,6 +23,7 @@ test/echo_signal/*.wav
 test/farend_speech/*.wav
 test/nearend_mic_signal/*.wav
 test/nearend_speech/*.wav
+test/predict/*.wav
 
 testDemo/checkpoints/*
 
