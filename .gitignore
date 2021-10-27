@@ -19,9 +19,15 @@ data_preparation/Synthetic/VAL/farend_speech/*.wav
 data_preparation/Synthetic/VAL/nearend_mic_signal/*.wav
 data_preparation/Synthetic/VAL/nearend_speech/*.wav
 
-testDemo/checkpoints/*
-test/*
+test/echo_signal/*.wav
+test/farend_speech/*.wav
+test/nearend_mic_signal/*.wav
+test/nearend_speech/*.wav
 
+testDemo/checkpoints/*
+
+testDemo/event_file/*
+testDemo/event_file/AEC_baseline/*
 checkpoints/*
 checkpoints/AEC_baseline/*
 
