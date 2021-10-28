@@ -19,7 +19,7 @@ def parse_ags1():
     parser.add_argument("--batch-size", type=int, default=16, help="")
     parser.add_argument("--epochs", type=int, default=1000, help='20')
     parser.add_argument('--lr', type=float, default=1e-5, help='学习率 (default: 0.01,3e-4)')
-    parser.add_argument('--train_data', default="./data_preparation/Synthetic/TRAIN", help='数据集的path')
+    parser.add_argument('--train_data', default="./data_preparation/Synthetic/TRAIN3", help='数据集的path')
     parser.add_argument('--val_data', default="./data_preparation/Synthetic/VAL3", help='验证样本的path')
     parser.add_argument('--checkpoints_dir', default="./checkpoints/AEC_baseline", help='模型检查点文件的路径(以继续培训)')
     parser.add_argument('--event_dir', default="./event_file/AEC_baseline", help='tensorboard事件文件的地址')
@@ -66,7 +66,7 @@ def main():
 
     # ###########    加载模型检查点   ############
     start_epoch = 0
-    isLoad = True
+    isLoad = False
     # if args.model_name:
     if isLoad:
         print("加载模型：", args.checkpoints_dir + args.model_name)

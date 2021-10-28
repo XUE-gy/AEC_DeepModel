@@ -2,8 +2,8 @@
 import os
 import torch
 from torch import nn
-# Define LSTM Neural Networks
-class LstmRNN(nn.Module):
+# Define GRU Neural Networks
+class GRU(nn.Module):
     """
         Parameters：
         - input_size: feature size
@@ -14,12 +14,12 @@ class LstmRNN(nn.Module):
         -input_size：特征大小
         -hidden_size：隐藏单位的数量
         -output_size：输出的数量
-        -numlayers：要堆栈的LSTM层
+        -numlayers：要堆栈的LSTN层
     """
     # 999,1024,999,1
     def __init__(self, input_size, hidden_size=1, output_size=1, num_layers=1):
         super().__init__()
-        self.lstm = nn.LSTM(
+        self.lstm = nn.GRU(
             input_size,
             hidden_size,
             num_layers,
@@ -57,7 +57,7 @@ class LstmRNN(nn.Module):
         return x
 
 def main2():
-    model = LstmRNN(999, 999, 999, 1)
+    model = GRU(999, 999, 999, 1)
     x = torch.randn(8, 322, 999)  # 输入 [8, 322, 999]
     y = model(x)  # 输出 [8, 161, 999]
     print(y.shape)
