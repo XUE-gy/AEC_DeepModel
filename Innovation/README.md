@@ -24,3 +24,6 @@ train loss 趋于不变，test loss不断下降，说明数据集100%有问题;
 train loss 趋于不变，test loss趋于不变，说明学习遇到瓶颈，需要减小学习率或批量数目;
 
 train loss 不断上升，test loss不断上升，说明网络结构设计不当，训练超参数设置不当，数据集经过清洗等问题。
+
+gpu占用不满：
+batch_size较小得原因，调大一点可以减少cpu搬运

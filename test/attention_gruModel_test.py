@@ -60,7 +60,7 @@ nearend_speech_magnitude = nearend_speech_magnitude.to(device)
 nearend_speech_phase = nearend_speech_phase.to(device)
 
 model = GRU(999, 999, 999, 2).to(device)  # 实例化模型
-checkpoint = torch.load("../checkpoints/AEC_baseline/80_gru.pth")
+checkpoint = torch.load("../checkpoints/AEC_baseline/35_gru.pth")
 model.load_state_dict(checkpoint["model"])
 
 X = torch.cat((farend_speech_magnitude, nearend_mic_magnitude), dim=0)
