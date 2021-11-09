@@ -12,7 +12,7 @@ from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 
 
-class FileDateset(Dataset):
+class MultiFileDateset(Dataset):
     def __init__(self, dataset_path="./Synthetic/MultiTRAIN44100", fs=44100, win_length=320, mode="train"):
         self.fs = fs
         self.win_length = win_length
@@ -79,7 +79,7 @@ class FileDateset(Dataset):
 
 
 if __name__ == "__main__":
-    train_set = FileDateset()
+    train_set = MultiFileDateset()
     train_loader = DataLoader(train_set, batch_size=16, shuffle=True, drop_last=True)
     print(len(train_loader))
     for x, y, nearend_mic_magnitude,nearend_speech_magnitude in train_loader:
