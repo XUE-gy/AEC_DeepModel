@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader
 
 
 class FileDateset(Dataset):
-    def __init__(self, dataset_path="./Synthetic/TRAIN", fs=16000, win_length=320, mode="train"):
+    def __init__(self, dataset_path="./Synthetic/MultiTRAIN44100", fs=44100, win_length=320, mode="train"):
         self.fs = fs
         self.win_length = win_length
         self.mode = mode
@@ -27,6 +27,9 @@ class FileDateset(Dataset):
         self.nearend_mic_signal_list = sorted(glob.glob(nearend_mic_signal_path+"/*.wav"))  # 近端麦克风语音路径，list
         self.nearend_speech_list = sorted(glob.glob(nearend_speech_path+"/*.wav"))  # 近端语音路径，list
 
+        print(self.farend_speech_list)
+        print(self.nearend_mic_signal_list)
+        print(self.nearend_speech_list)
 
     def spectrogram(self, wav_path):
         """
@@ -77,10 +80,10 @@ class FileDateset(Dataset):
 
 if __name__ == "__main__":
     train_set = FileDateset()
-    train_loader = DataLoader(train_set, batch_size=64, shuffle=True, drop_last=True)
-
+    train_loader = DataLoader(train_set, batch_size=16, shuffle=True, drop_last=True)
+    print(len(train_loader))
     for x, y, nearend_mic_magnitude,nearend_speech_magnitude in train_loader:
-        print(x.shape)  # torch.Size([64, 322, 999])
-        print(y.shape)  # torch.Size([64, 161, 999])
-        print(nearend_mic_magnitude.shape)
+        print(x.shape)  # torch.Size([batch_size, 4, 161, 4030])
+        print(y.shape)  # torch.Size([batch_size, 2, 161, 4030])
+        print(nearend_mic_magnitude.shape) # torch.Size([batch_size, 2, 161, 4030])
     print(train_set)
