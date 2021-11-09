@@ -5,10 +5,10 @@ from torch.utils.data import DataLoader
 from torch import nn
 import argparse
 from tensorboardX import SummaryWriter
-
+from time import *
 from data_preparation.data_preparation import FileDateset
 from model.Baseline import Base_model
-from model.lstm import LstmRNN
+from model.gru import GRU
 # from model.TCN_model import TCN_model
 
 from model.ops import pytorch_LSD
@@ -17,11 +17,11 @@ from model.ops import pytorch_LSD
 def parse_ags1():
     parser = argparse.ArgumentParser()
     # 重头开始训练 defaule=None, 继续训练defaule设置为'/**.pth'
-    parser.add_argument("--model_name", type=str, default=None, help="是否加载模型继续训练 '/50.pth' None")
+    parser.add_argument("--model_name", type=str, default='/80_gru.pth', help="是否加载模型继续训练 '/50.pth' None")
     parser.add_argument("--batch-size", type=int, default=16, help="")
-    parser.add_argument("--epochs", type=int, default=1000, help='20')
-    parser.add_argument('--lr', type=float, default=3e-4, help='学习率 (default: 0.01,3e-4)')
-    parser.add_argument('--train_data', default="./data_preparation/Synthetic/TRAIN3", help='数据集的path')
+    parser.add_argument("--epochs", type=int, default=2000, help='20')
+    parser.add_argument('--lr', type=float, default=1e-4, help='学习率 (default: 0.01,3e-4)')
+    parser.add_argument('--train_data', default="./data_preparation/Synthetic/TRAIN", help='数据集的path')
     parser.add_argument('--val_data', default="./data_preparation/Synthetic/VAL3", help='验证样本的path')
     parser.add_argument('--checkpoints_dir', default="./checkpoints/AEC_baseline", help='模型检查点文件的路径(以继续培训)')
     parser.add_argument('--event_dir', default="./event_file/AEC_baseline", help='tensorboard事件文件的地址')
@@ -53,9 +53,7 @@ def main():
     #          实例化模型          #
     ################################
     # model = Base_model().to(device)  # 实例化模型
-    model = Base_model().to(device) # 更换模型
-
-    model = LstmRNN(999, 999, 999, 1).to(device)  # 更换模型
+    model = GRU(999, 999, 999, 2).to(device)  # 更换模型
 
     # summary(model, input_size=(322, 999))  # 模型输出 torch.Size([64, 322, 999])
     # ###########    损失函数   ############
@@ -72,7 +70,9 @@ def main():
 
     # ###########    加载模型检查点   ############
     start_epoch = 0
-    if args.model_name:
+    is_load_model = True
+    # if args.model_name:
+    if is_load_model:
         print("加载模型：", args.checkpoints_dir + args.model_name)
         checkpoint = torch.load(args.checkpoints_dir + args.model_name)
         model.load_state_dict(checkpoint["model"])
@@ -81,7 +81,7 @@ def main():
         # lr_schedule.load_state_dict(checkpoint['lr_schedule'])  # 加载lr_scheduler
 
     for epoch in range(start_epoch, args.epochs):
-
+        start_time = time()
         model.train()  # 训练模型
         # print(len(train_loader))
         # enumerate加入下标，batch_idx标识列表下标
@@ -90,7 +90,8 @@ def main():
         # train_nearend_mic_magnitude：近端麦克风
         # train_nearend_magnitude：近端语音
         epochLoss = 0
-        # print('len(train_loader)', len(train_loader))
+
+        print('len(train_loader)', len(train_loader))
         for batch_idx, (train_X, train_mask, train_nearend_mic_magnitude, train_nearend_magnitude) in enumerate(
                 train_loader):
             # 作用：若有cuda导入gpu
@@ -100,7 +101,7 @@ def main():
             train_nearend_magnitude = train_nearend_magnitude.to(device)
 
             # 前向传播
-            pred_mask = model(train_X)  # [batch_size, 322, 999]--> [batch_size, 161, 999]
+            pred_mask = model(train_X).to(device)  # [batch_size, 322, 999]--> [batch_size, 161, 999]
 
             # 调试信息
             # print('-------------------')
@@ -118,7 +119,7 @@ def main():
             # print('Loss:{:.5f}'.format(train_loss.item()))
 
             # 近端语音信号频谱 = mask * 麦克风信号频谱 [batch_size, 161, 999]
-            pred_near_spectrum = pred_mask * train_nearend_mic_magnitude
+            pred_near_spectrum = (pred_mask * train_nearend_mic_magnitude).to(device)
             train_loss = criterion(pred_near_spectrum, train_nearend_magnitude)
             epochLoss = (epochLoss * batch_idx + train_loss.item()) / (batch_idx + 1)
             # train_lsd = pytorch_LSD(train_nearend_magnitude, pred_near_spectrum)
@@ -139,7 +140,8 @@ def main():
         # writer.add_scalar(tag="train_loss", scalar_value=train_loss.item(), global_step=epoch + 1)
         # writer.add_scalar(tag="train_lsd", scalar_value=train_lsd.item(), global_step=epoch + 1)
         # writer.flush()
-
+        end_time = time()
+        print('one epoch consume time :',end_time - start_time)
         # 神经网络在验证数据集上的表现
         model.eval()  # 测试模型
         # 测试的时候不需要梯度,并不是所有的操作都需要进行计算图的生成（计算过程的构建，以便梯度反向传播等操作）,强制之后的内容不进行计算图构建
@@ -186,7 +188,7 @@ def main():
                 # 'lr_schedule': lr_schedule.state_dict()
             }
 
-            torch.save(checkpoint, '%s/%d_lstm.pth' % (args.checkpoints_dir, epoch + 1))
+            torch.save(checkpoint, '%s/%d_gru.pth' % (args.checkpoints_dir, epoch + 1))
 
 
 

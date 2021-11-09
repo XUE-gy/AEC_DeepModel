@@ -43,8 +43,8 @@ class LstmRNN(nn.Module):
         # 16,322,999 -> 16,322,999
         _y = self.myModel(_x)
         # 16,322,999 -> 16,322,1024
-        x= _y
-        # x, _ = self.lstm(_y)  # _x is input, size (seq_len, batch, input_size)
+        # x= _y
+        x, _ = self.lstm(_y)  # _x is input, size (seq_len, batch, input_size)
         # 16,322,1024 -> 16*322,1024
         s, b, h = x.shape  # x is output, size (seq_len, batch, hidden_size)
         # 16,322,1024 -> 16*322,1024
