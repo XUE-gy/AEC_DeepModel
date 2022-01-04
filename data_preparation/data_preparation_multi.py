@@ -1,7 +1,7 @@
 
 # -*- coding:utf-8 -*-
 """
-作用：
+作用：暂时没用，之前验证时使用
 """
 import glob
 import os
@@ -37,8 +37,11 @@ class MultiFileDateset(Dataset):
         :return: 返回该音频的振幅和相位
         """
         wav, _ = torchaudio.load(wav_path)
+        print('wav1.shape', wav.shape)
+        print('len(wav1)',len(wav))
         wav = wav.squeeze()
-
+        print('wav2.shape', wav.shape)
+        print('len(wav2)',len(wav))
         if len(wav) < 160000:
             wav = F.pad(wav, (0,160000-len(wav)), mode="constant",value=0)
 

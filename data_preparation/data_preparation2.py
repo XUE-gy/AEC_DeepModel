@@ -1,7 +1,7 @@
 
 # -*- coding:utf-8 -*-
 """
-作用：
+作用：对立体声处理，同时对双通道进行回声消除，共用一套参数
 """
 import glob
 import os
@@ -12,8 +12,8 @@ from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 
 
-class FileDateset(Dataset):
-    def __init__(self, dataset_path="./Synthetic/TRAIN", fs=16000, win_length=320, mode="train"):
+class FileDatesetMul(Dataset):
+    def __init__(self, dataset_path="./Synthetic/MultiTRAIN44100", fs=44100, win_length=320, mode="train"):
         self.fs = fs
         self.win_length = win_length
         self.mode = mode
@@ -32,14 +32,37 @@ class FileDateset(Dataset):
         :return: 返回该音频的振幅和相位
         """
         wav, _ = torchaudio.load(wav_path)
-        wav = wav.squeeze()
+
 
         if len(wav) < 160000:
             wav = F.pad(wav, (0,160000-len(wav)), mode="constant",value=0)
 
-        S = torch.stft(wav, n_fft=self.win_length, hop_length=self.win_length//2,
+        # S = torch.stft(wav, n_fft=self.win_length, hop_length=self.win_length//2,
+        #                win_length=self.win_length, window=torch.hann_window(window_length=self.win_length),
+        #                center=False, return_complex=True)   # (*, F,T)
+
+        wavL, wavR = wav.split(1, dim=0)
+        # print('wavL1.shape', wavL.shape)
+        # print('len(wav2)',len(wavL))
+        wavL = wavL.squeeze()
+        wavR = wavR.squeeze()
+        # print('wavL2.shape', wavL.shape)
+        # print('len(wav2)',len(wavL))
+        SL = torch.stft(wavL, n_fft=self.win_length, hop_length=self.win_length//2,
                        win_length=self.win_length, window=torch.hann_window(window_length=self.win_length),
-                       center=False, return_complex=True)   # (*, F,T)
+                       center=False, return_complex=True)
+        SR = torch.stft(wavR, n_fft=self.win_length, hop_length=self.win_length//2,
+                       win_length=self.win_length, window=torch.hann_window(window_length=self.win_length),
+                       center=False, return_complex=True)
+        # print('SL1.shape', SL.shape)
+        SL = SL.unsqueeze(0)
+        SR = SR.unsqueeze(0)
+        # print('SL2.shape', SL.shape)
+        S = torch.cat([SL, SR], dim=0)
+        # print('S.shape',S.shape)
+
+
+
         magnitude = torch.abs(S)        # 振幅
         phase = torch.exp(1j * torch.angle(S))  # 相位
         return magnitude, phase
@@ -57,7 +80,7 @@ class FileDateset(Dataset):
         # 近端语音 振幅，相位
         nearend_speech_magnitude, nearend_speech_phase = self.spectrogram(self.nearend_speech_list[item])
 
-        X = torch.cat((farend_speech_magnitude, nearend_mic_magnitude), dim=0)  # 在频点维度上进行拼接(161*2, 999),模型输入
+        X = torch.cat((farend_speech_magnitude, nearend_mic_magnitude), dim=1)  # 在频点维度上进行拼接(161*2, 999),模型输入
 
         _eps = torch.finfo(torch.float).eps  # 防止分母出现0
         mask_IRM = torch.sqrt(nearend_speech_magnitude ** 2/(nearend_mic_magnitude ** 2+_eps))  # IRM，模型输出
@@ -74,7 +97,7 @@ class FileDateset(Dataset):
 
 
 if __name__ == "__main__":
-    train_set = FileDateset()
+    train_set = FileDatesetMul()
     train_loader = DataLoader(train_set, batch_size=64, shuffle=True, drop_last=True)
 
     for x, y, nearend_mic_magnitude,nearend_speech_magnitude in train_loader:

@@ -11,7 +11,7 @@ import torch
 import matplotlib.pyplot as plt
 
 from model.Baseline import Base_model
-from model.lstm import LstmRNN
+from model.lstmMulti import LstmRNNMul
 from model.TCN_model import TCN_model
 from matplotlib.ticker import FuncFormatter
 import numpy as np
@@ -29,21 +29,26 @@ def spectrogram(wav_path, win_length=320):
     # if len(wav) != 160000:
     #     print(wav_path)
     #     print(len(wav))
-
-    S = torch.stft(wav, n_fft=win_length, hop_length=win_length // 2,
+    wavL, wavR = wav.split(1, dim=0)
+    SL = torch.stft(wavL, n_fft=win_length, hop_length=win_length // 2,
                    win_length=win_length, window=torch.hann_window(window_length=win_length),
                    center=False, return_complex=True)
+    SR = torch.stft(wavR, n_fft=win_length, hop_length=win_length // 2,
+                   win_length=win_length, window=torch.hann_window(window_length=win_length),
+                   center=False, return_complex=True)
+    S = torch.cat([SL, SR], dim=0)
+    print('S.shape',S.shape)
     magnitude = torch.abs(S)
     phase = torch.exp(1j * torch.angle(S))
     return magnitude, phase
 
 
-fs = 16000
-index = "9994"
-farend_speech = "./single/farend_speech/farend_speech_fileid_" + index + ".wav"
-nearend_mic_signal = "./single/nearend_mic_signal/nearend_mic_fileid_" + index + ".wav"
-nearend_speech = "./single/nearend_speech/nearend_speech_fileid_" + index + ".wav"
-echo_signal = "./single/echo_signal/echo_fileid_" + index + ".wav"
+fs = 44100
+index = "0"
+farend_speech = "./multi/farend_speech/farend_speech_0_" + index + ".wav"
+nearend_mic_signal = "./multi/nearend_mic_signal/nearend_mic_signal_0_" + index + ".wav"
+nearend_speech = "./multi/nearend_speech/nearend_speech_0_" + index + ".wav"
+echo_signal = "./multi/echo_signal/echo_fileid_" + index + ".wav"
 
 print("GPU是否可用：", torch.cuda.is_available())  # True
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -59,29 +64,42 @@ nearend_mic_magnitude = nearend_mic_magnitude.to(device)
 nearend_speech_magnitude = nearend_speech_magnitude.to(device)
 nearend_speech_phase = nearend_speech_phase.to(device)
 
-model = LstmRNN(999, 999, 999, 2).to(device)  # 实例化模型
-checkpoint = torch.load("../checkpoints/AEC_baseline/80_lstm.pth")
+model = LstmRNNMul(4030, 512, 4030, 4).to(device)  # 实例化模型
+checkpoint = torch.load("../checkpoints/AEC_MultiLstm4/485_lstm.pth")
 model.load_state_dict(checkpoint["model"])
 
-X = torch.cat((farend_speech_magnitude, nearend_mic_magnitude), dim=0)
-X = X.unsqueeze(0)
+X = torch.cat((farend_speech_magnitude, nearend_mic_magnitude), dim=1)
+X = X.unsqueeze(dim=0)
+print('X.shape',X.shape)
 per_mask = model(X)  # [1, 322, 999]-->[1, 161, 999]
 print("per_mask.shape:",per_mask.shape)
 per_nearend_magnitude = per_mask * nearend_mic_magnitude  # 预测的近端语音 振幅
 
 complex_stft = per_nearend_magnitude * nearend_mic_phase  # 振幅*相位=语音复数表示
 print("complex_stft", complex_stft.shape)  # [1, 161, 999]
+# complex_stft = complex_stft.squeeze(0)
+complex_stft = torch.squeeze(complex_stft, dim=0)
+print("complex_stft", complex_stft.shape)
+complex_stft_left,complex_stft_right =  complex_stft.split(1, dim=0)
 
-per_nearend = torch.istft(complex_stft, n_fft=320, hop_length=160, win_length=320,
+print("complex_stft_left", complex_stft_left.shape)
+per_nearend_left = torch.istft(complex_stft_left, n_fft=320, hop_length=160, win_length=320,
                           window=torch.hann_window(window_length=320).to(device))
+per_nearend_right = torch.istft(complex_stft_right, n_fft=320, hop_length=160, win_length=320,
+                          window=torch.hann_window(window_length=320).to(device))
+
+# per_nearend_left = per_nearend_left.unsqueeze(dim=0)
+# per_nearend_right = per_nearend_right.unsqueeze(dim=0)
+print("per_nearend_left", per_nearend_left.shape)
+per_nearend = torch.cat([per_nearend_left, per_nearend_right], dim=0)
 print("per_nearend", per_nearend.shape)
-torchaudio.save("./single/predict/nearend_speech_fileid_lstm_" + index + ".wav", src=per_nearend.cpu().detach(), sample_rate=fs)
+torchaudio.save("./multi/predict/nearend_speech_fileid_lstm_" + index + ".wav", src=per_nearend.cpu().detach(), sample_rate=fs)
 # print("近端语音", per_nearend.shape)    # [1, 159680]
 
 # y, _ = librosa.load(nearend_mic_signal, sr=fs)
 y, _ = librosa.load(nearend_speech, sr=fs)
 time_y = np.arange(0, len(y)) * (1.0 / fs)
-recover_wav, _ = librosa.load("./single/predict/nearend_speech_fileid_lstm_" + index + ".wav", sr=16000)
+recover_wav, _ = librosa.load("./multi/predict/nearend_speech_fileid_lstm_" + index + ".wav", sr=16000)
 time_recover = np.arange(0, len(recover_wav)) * (1.0 / fs)
 
 plt.figure(figsize=(8,6))

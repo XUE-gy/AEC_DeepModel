@@ -6,25 +6,28 @@ from torch import nn
 import argparse
 from tensorboardX import SummaryWriter
 from time import *
-from data_preparation.data_preparation import FileDateset
+from data_preparation.data_preparation2 import FileDatesetMul
 from model.Baseline import Base_model
-from model.lstm import LstmRNN
+from model.lstmMulti import LstmRNNMul
 # from model.TCN_model import TCN_model
 
 from model.ops import pytorch_LSD
+'''
+    跑出的模型存在长度加长的问题
+'''
 
 
 def parse_ags1():
     parser = argparse.ArgumentParser()
     # 重头开始训练 defaule=None, 继续训练defaule设置为'/**.pth'
-    parser.add_argument("--model_name", type=str, default='/35_lstm.pth', help="是否加载模型继续训练 '/50.pth' None")
-    parser.add_argument("--batch-size", type=int, default=16, help="")
-    parser.add_argument("--epochs", type=int, default=105, help='20')
-    parser.add_argument('--lr', type=float, default=3e-4, help='学习率 (default: 0.01,3e-4)')
-    parser.add_argument('--train_data', default="./data_preparation/Synthetic/TRAIN", help='数据集的path')
-    parser.add_argument('--val_data', default="./data_preparation/Synthetic/VAL3", help='验证样本的path')
-    parser.add_argument('--checkpoints_dir', default="./checkpoints/AEC_baseline", help='模型检查点文件的路径(以继续培训)')
-    parser.add_argument('--event_dir', default="./event_file/AEC_baseline", help='tensorboard事件文件的地址')
+    parser.add_argument("--model_name", type=str, default='/480_lstm.pth', help="是否加载模型继续训练 '/50.pth' None")
+    parser.add_argument("--batch-size", type=int, default=8, help="")
+    parser.add_argument("--epochs", type=int, default=1500, help='20')
+    parser.add_argument('--lr', type=float, default=1e-6, help='学习率 (default: 0.01,3e-4)')
+    parser.add_argument('--train_data', default="./data_preparation/Synthetic/MultiTRAIN44100", help='数据集的path')
+    parser.add_argument('--val_data', default="./data_preparation/Synthetic/VAL44100", help='验证样本的path')
+    parser.add_argument('--checkpoints_dir', default="./checkpoints/AEC_MultiLstm4", help='模型检查点文件的路径(以继续培训)')
+    parser.add_argument('--event_dir', default="./event_file/AEC_MultiLstm2", help='tensorboard事件文件的地址')
     args = parser.parse_args()
     return args
 
@@ -38,8 +41,8 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # 实例化 Dataset
-    train_set = FileDateset(dataset_path=args.train_data)  # 实例化训练数据集
-    val_set = FileDateset(dataset_path=args.val_data)  # 实例化验证数据集
+    train_set = FileDatesetMul(dataset_path=args.train_data)  # 实例化训练数据集
+    val_set = FileDatesetMul(dataset_path=args.val_data)  # 实例化验证数据集
 
     # 数据加载器
     train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=False, drop_last=True)
@@ -53,7 +56,7 @@ def main():
     #          实例化模型          #
     ################################
     # model = Base_model().to(device)  # 实例化模型
-    model = LstmRNN(999, 999, 999, 2).to(device)  # 更换模型
+    model = LstmRNNMul(4030, 512, 4030, 4).to(device)  # 更换模型
 
     # summary(model, input_size=(322, 999))  # 模型输出 torch.Size([64, 322, 999])
     # ###########    损失函数   ############
@@ -90,6 +93,7 @@ def main():
         # train_nearend_mic_magnitude：近端麦克风
         # train_nearend_magnitude：近端语音
         epochLoss = 0
+        batchNum = 0
         print('len(train_loader)', len(train_loader))
         for batch_idx, (train_X, train_mask, train_nearend_mic_magnitude, train_nearend_magnitude) in enumerate(
                 train_loader):
@@ -100,23 +104,26 @@ def main():
             train_nearend_magnitude = train_nearend_magnitude.to(device)
 
             # 前向传播
-            pred_mask = model(train_X)  # [batch_size, 322, 999]--> [batch_size, 161, 999]
+            # print('train_X.shape',train_X.shape)
+            pred_mask = model(train_X)  # print(train_X.shape) [1, 2, 322, 4030]
 
-            # 调试信息
-            print('-------------------')
-            print('pred_mask.shape', pred_mask.shape)
-            print('train_X.shape', train_X.shape)
-            print('train_mask.shape', train_mask.shape)
-            print('train_nearend_mic_magnitude.shape',train_nearend_mic_magnitude.shape)
-            print('train_nearend_magnitude.shape', train_nearend_magnitude.shape)
-            print('pred_mask.shape',pred_mask.shape)
-            # 损失函数值
+            # # 调试信息
+            # print('-------------------')
+            # print('pred_mask.shape', pred_mask.shape)
+            # print('train_X.shape', train_X.shape)
+            # print('train_mask.shape', train_mask.shape)
+            # print('train_nearend_mic_magnitude.shape',train_nearend_mic_magnitude.shape)
+            # print('train_nearend_magnitude.shape', train_nearend_magnitude.shape)
+            # print('pred_mask.shape',pred_mask.shape)
+
+            # # 损失函数值
             # train_loss = criterion(pred_mask, train_mask)
             # train_loss = criterion(pred_mask, train_mask)
-
+            #
             # epochLoss = train_loss.item()
-
-            # print('Loss:{:.5f}'.format(train_loss.item()))
+            #
+            # print('1个epoch中的batch次数：',batchNum,'Loss:{:.5f}'.format(train_loss.item()))
+            # batchNum = batchNum + 1
 
             # 近端语音信号频谱 = mask * 麦克风信号频谱 [batch_size, 161, 999]
             pred_near_spectrum = pred_mask * train_nearend_mic_magnitude
@@ -127,7 +134,7 @@ def main():
 
             # 反向传播
             optimizer.zero_grad()  # 将梯度清零
-            train_loss.backward()  # 反向传播
+            train_loss.backward(retain_graph=True)  # 反向传播
             optimizer.step()  # 更新参数
 
             # ###########    可视化打印   ############
